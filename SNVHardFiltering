@@ -1,0 +1,93 @@
+library(fBasics)
+library(ggplot2)
+setwd("C:/Users/selee/Desktop/class/defaultCGP")
+df <- read.table("table.Reannotated.hg19.common.SnpSift.masked.isHet.tranch99.9.vcf.txt",header=T)
+nrow(df)
+df <- df[complete.cases(df),]
+dfSnv <- df[df$TYPE=='SNP',]
+
+#candidate hard filtering features : AD, ReadPosRankSum, SOR, FS, QD, GQ(for each sample), AF(for each sample)
+#First, examine the range and distribution of the feature values.
+#If they are all positives or all negatives, start cutting this feature at one side and see how ti/tv changes.
+#If they show a bell-shaped curve that has peak on a certain value k, cut this feature with same values at each site. i.e., [k-a+1,k+a-1] after [k-a,k+a].
+#If they show a curve with a long tail, first cut this feature at the tail and observe the changes.
+#If ti/tv keeps increasing and additional filtering is needed, do the same with the bell-shaped curve.
+#Range determines how much to cut at a time.
+#When the range is 0 to 40, cutting 1 by 1 would be better than 0.1 by 0.1. But for -2 to 2, 0.1 would be the better choice.
+
+################determining offspring AD cutoff(filter 1)####################
+#add column AD
+dfSnv$Chinese.AD <- round(dfSnv$Chinese.AF*dfSnv$Chinese.DP)
+
+#figure out the range and distribution of values
+summary(dfSnv$Chinese.AD)
+ggplot(dfSnv,aes(Chinese.AD))+geom_density()
+
+#determinging allele depth cutoff by ti/tv per AD plot
+vadti <- c()
+vadtv <- c()
+i <- 4 #min AD value
+while (i<=20){ #max AD value at first, observe the plot, then choose a reasonable point that can fully reflect the changes of ti/tv at the beginning.
+  dfad <- dfSnvNovel[dfSnvNovel$Chinese.AD>=i,]
+  dfadti <- dfad[dfad$TRANSITION==1,]
+  dfadtv <- dfad[dfad$TRANSITION==0,]
+  vadti <- c(vadti,nrow(dfadti))
+  vadtv <- c(vadtv,nrow(dfadtv))
+  i <- i + 1
+}
+vadtitv <- vadti / vadtv
+ad_over <- seq(from=4,to=20,by=1)
+dfadtitv <- data.frame(vadtitv,vadti,vadtv,ad_over)
+ggplot(dfadtitv,aes(x=ad_over,y=vadtitv))+geom_line()
+
+#plotting number of ti&tv snvs per AD
+a <- ggplot(dfadtitv,aes(x=ad_over,y=vadti))+geom_line()
+a + geom_line(aes(x=ad_over,y=vadtv),color='blue')
+
+#If the line plot is flat at first and decreases dramatically at the end,
+#choose the point where the line starts to shake as AD cutoff(to be as lenient as possible).
+#If ti/tv value increases from the beginning, choose the point with the highest ti/tv value before it starts to decrease.
+#If ti/tv value decreases from the beginning and tends to decrease overall, do not use AD as a hard filtering feature.
+
+################determining ReadPosRankSum cutoff(filter 2)####################
+summary(dfSnv$ReadPosRankSum)
+rprsti <- c()
+rprstv <- c()
+i <- -5
+while (i<=-0.1){
+  print(i)
+  dfrprs <- dfSnv[dfSnv$ReadPosRankSum>=i&dfSnv$ReadPosRankSum<=(-i),]
+  dfrprsti <- dfrprs[dfrprs$TRANSITION==1,]
+  dfrprstv <- dfrprs[dfrprs$TRANSITION==0,]
+  rprsti <- c(rprsti,nrow(dfrprsti))
+  rprstv <- c(rprstv,nrow(dfrprstv))
+  i <- i + 0.1
+}
+rprstitv <- rprsti / rprstv
+dfrprstitv <- data.frame(rprsti,rprstv,rprstitv)
+rprscut <- seq(from=-5,to=-0.1,by=0.1)
+ggplot(dfrprstitv,aes(x=rprscut,y=rprsti))+geom_line()+geom_line(aes(x=rprscut,y=rprstv),color='blue')
+ggplot(dfrprstitv,aes(x=rprscut,y=rprstitv))+geom_line()
+#determine cutoff in a similar way to AD
+
+################determining ReadPosRankSum cutoff(filter 3)####################
+summary(dfSnv$SOR)
+vecsorti <- c()
+vecsortv <- c()
+i <- 6
+while (i>=0.1){#0.1
+  print(i)
+  dfsor <- dfSnv[dfSnv$SOR<=i,]
+  dfsorti <- dfsor[dfsor$TRANSITION==1,]
+  dfsortv <- dfsor[dfsor$TRANSITION==0,]
+  vecsorti <- c(vecsorti,nrow(dfsorti))
+  vecsortv <- c(vecsortv,nrow(dfsortv))
+  i <- i - 0.1
+}
+vecsortitv <- vecsorti / vecsortv
+sor_under <- seq(from=6,to=0.1,by=-0.1)
+dfsortitv <- data.frame(vecsortitv,vecsorti,vecsortv,sor_under)
+ggplot(dfsortitv,aes(x=sor_under,y=vecsortitv))+geom_line()+scale_x_reverse()
+a <- ggplot(dfsortitv,aes(x=sor_under,y=vecsorti))+geom_line()
+a + geom_line(aes(x=sor_under,y=vecsortv),color='blue')+scale_x_reverse()
+
