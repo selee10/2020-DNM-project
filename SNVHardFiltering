@@ -40,7 +40,7 @@ ad_over <- seq(from=4,to=20,by=1)
 dfadtitv <- data.frame(vadtitv,vadti,vadtv,ad_over)
 ggplot(dfadtitv,aes(x=ad_over,y=vadtitv))+geom_line()
 
-#plotting number of ti&tv snvs per AD
+#plotting number of ti&tv snvs left after removing values with certain AD
 a <- ggplot(dfadtitv,aes(x=ad_over,y=vadti))+geom_line()
 a + geom_line(aes(x=ad_over,y=vadtv),color='blue')
 
@@ -66,11 +66,11 @@ while (i<=-0.1){
 rprstitv <- rprsti / rprstv
 dfrprstitv <- data.frame(rprsti,rprstv,rprstitv)
 rprscut <- seq(from=-5,to=-0.1,by=0.1)
-ggplot(dfrprstitv,aes(x=rprscut,y=rprsti))+geom_line()+geom_line(aes(x=rprscut,y=rprstv),color='blue')
 ggplot(dfrprstitv,aes(x=rprscut,y=rprstitv))+geom_line()
-#determine cutoff in a similar way to AD
+ggplot(dfrprstitv,aes(x=rprscut,y=rprsti))+geom_line()+geom_line(aes(x=rprscut,y=rprstv),color='blue')
+#determine cutoff in the same way as AD
 
-################determining ReadPosRankSum cutoff(filter 3)####################
+################determining SOR cutoff(filter 3)####################
 summary(dfSnv$SOR)
 vecsorti <- c()
 vecsortv <- c()
@@ -91,3 +91,36 @@ ggplot(dfsortitv,aes(x=sor_under,y=vecsortitv))+geom_line()+scale_x_reverse()
 a <- ggplot(dfsortitv,aes(x=sor_under,y=vecsorti))+geom_line()
 a + geom_line(aes(x=sor_under,y=vecsortv),color='blue')+scale_x_reverse()
 
+################determining FS cutoff(filter 4)####################
+summary(dfSnv$FS)
+i <- 39
+fsti <- c()
+fstv <- c()
+while (i>=0){
+  dfs <- dfSnv[dfSnv$FS<=i,]
+  dfs_ti <- dfs[dfs$TRANSITION==1,]
+  dfs_tv <- dfs[dfs$TRANSITION==0,]
+  fsti <- c(fsti,nrow(dfs_ti))
+  fstv <- c(fstv,nrow(dfs_tv))
+  i <- i - 1
+}
+fstitv <- fsti / fstv
+fs <- c(39:0)
+dfstitv <- data.frame(fsti,fstv,fstitv,fs)
+ggplot(dfstitv,aes(x=fs,y=fstitv))+geom_line()+scale_x_reverse()
+ggplot(dfstitv,aes(x=fs,y=fsti))+geom_line()+geom_line(aes(x=fs,y=fstv),color='blue')+scale_x_reverse()
+
+################determining offspring GQ cutoff(filter 5)####################
+
+################AF cutoff(predetermined, filter 6&7)####################
+
+#apply all useful filters
+#Then work on leftovers : QD, MQ, MQRankSum, parent GQ
+
+################determining QD cutoff(filter 8)####################
+
+################determining parent GQ cutoff(filter)####################
+
+################determining MQ cutoff(filter)####################
+
+################determining MQRankSum cutoff(filter)####################
