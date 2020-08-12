@@ -1,0 +1,43 @@
+library(fBasics)
+library(ggplot2)
+setwd("C:/Users/selee/Desktop/class/defaultCGP")
+df <- read.table("table.Reannotated.hg19.common.SnpSift.masked.isHet.tranch99.9.vcf.txt",header=T)
+nrow(df)
+df <- df[complete.cases(df),]
+dfSnv <- df[df$TYPE=='SNP',]
+
+################determining offspring AD cutoff(filter 1)####################
+#add column AD
+dfSnv$Chinese.AD <- round(dfSnv$Chinese.AF*dfSnv$Chinese.DP)
+summary(dfSnvNovel$Chinese.AD)
+
+#determinging allele depth cutoff by ti/tv per AD plot
+vadti <- c()
+vadtv <- c()
+i <- 4 #min AD value
+while (i<=20){ #max AD value at first, observe the plot, then choose a reasonable point that can fully reflect the changes of ti/tv at the beginning.
+  dfad <- dfSnvNovel[dfSnvNovel$Chinese.AD>=i,]
+  dfadti <- dfad[dfad$TRANSITION==1,]
+  dfadtv <- dfad[dfad$TRANSITION==0,]
+  vadti <- c(vadti,nrow(dfadti))
+  vadtv <- c(vadtv,nrow(dfadtv))
+  i <- i + 1
+}
+vadtitv <- vadti / vadtv
+ad_over <- seq(from=4,to=20,by=1)
+dfadtitv <- data.frame(vadtitv,vadti,vadtv,ad_over)
+ggplot(dfadtitv,aes(x=ad_over,y=vadtitv))+geom_line()
+
+#plotting number of ti&tv snvs per AD
+a <- ggplot(dfadtitv,aes(x=ad_over,y=vadti))+geom_line()
+a + geom_line(aes(x=ad_over,y=vadtv),color='blue')
+
+#If the line plot goes flat at first and decreases dramatically at the end,
+#choose the point where the line starts to shake as AD cutoff(to be as lenient as possible).
+#If ti/tv value increases from the beginning, choose the point with the highest ti/tv value before it starts to decrease.
+#If ti/tv value decreases from the beginning and tends to decrease overall, do not use AD as a hard filtering feature.
+
+################determining ReadPosRankSum cutoff(filter 2)####################
+summary(dfSnv$ReadPosRankSum)
+
+
